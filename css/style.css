@@ -75,6 +75,7 @@ p.lede { font-size: clamp(18px, 2vw, 21px); color: var(--sage); max-width: 58ch;
 .nav-links { display: flex; align-items: center; gap: 30px; }
 .nav-links a { text-decoration: none; color: var(--sage); font-size: 15.5px; font-weight: 500; position: relative; transition: color .2s; }
 .nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--pine); }
+.nav-links a.btn-primary, .nav-links a.btn-primary:hover, .nav-links a.btn-primary[aria-current="page"] { color: var(--ice); }
 .nav-links a:not(.btn)::after {
   content: ""; position: absolute; left: 0; bottom: -6px; height: 2px; width: 0;
   background: var(--current); border-radius: 2px; transition: width .25s ease;
@@ -350,3 +351,5 @@ footer { border-top: 1px solid var(--line); padding: 54px 0 44px; background: va
   .svc-grid, .app-grid { grid-template-columns: 1fr; }
   .stat-row { grid-template-columns: repeat(2, 1fr); }
 }
+
+textarea.pinput { resize: vertical; font-family: var(--font-body); }

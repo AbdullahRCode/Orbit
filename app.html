@@ -184,12 +184,13 @@ async function loadLeads() {
 
 async function loadDocs() {
   const { data } = await db.from("documents")
-    .select("file_name, storage_path, size_bytes, uploaded_at, leads(full_name)")
+    .select("file_name, storage_path, size_bytes, uploaded_at, ai_summary, leads(full_name)")
     .order("uploaded_at", { ascending: false }).limit(10);
   render("docs", data, d => `
     <div class="row">
       <div><strong>${esc(d.file_name)}</strong>
-        <span class="muted"> ${d.leads?.full_name ? "from " + esc(d.leads.full_name) : ""} (${(d.size_bytes / 1048576).toFixed(1)} MB)</span></div>
+        <span class="muted"> ${d.leads?.full_name ? "from " + esc(d.leads.full_name) : ""} (${(d.size_bytes / 1048576).toFixed(1)} MB)</span>
+        ${d.ai_summary ? '<p class="muted" style="font-size:13px; margin-top:4px; color: var(--deep-current);">' + esc(d.ai_summary) + "</p>" : ""}</div>
       <button class="btn btn-ghost row-btn" onclick="openDoc('${d.storage_path}')">View</button>
     </div>`, "No documents yet. They appear here the moment a client uploads.");
 }

@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -30,6 +31,20 @@
       <p class="lede" style="margin:16px 0 10px;">A few quick questions, then a personalized list of the documents your consultant will want to see. It takes about three minutes, and you can save and come back anytime.</p>
       <p class="muted" style="font-size:14px; margin-bottom:28px;">Everything you share is encrypted, access is logged for your security, and only your consulting office can see it. This portal collects information and documents. It does not give immigration advice.</p>
       <button class="btn btn-primary" onclick="go('service')">Start <span class="arrow">&rarr;</span></button>
+      <button class="btn btn-ghost" style="margin-left:10px;" onclick="go('signin')">I have an account</button>
+    </section>
+
+    <!-- returning client sign in -->
+    <section class="pstep" id="step-signin">
+      <div class="tick">Welcome back</div>
+      <h2>Sign in to continue.</h2>
+      <label class="plabel">Email <input id="s-email" class="pinput" type="email" autocomplete="username"></label>
+      <label class="plabel">Password <input id="s-pass" class="pinput" type="password" autocomplete="current-password"></label>
+      <p id="s-err" class="perr" hidden></p>
+      <div class="pnav">
+        <button class="btn btn-ghost" onclick="go('welcome')">Back</button>
+        <button class="btn btn-primary" onclick="clientSignIn()">Sign in <span class="arrow">&rarr;</span></button>
+      </div>
     </section>
 
     <!-- step 1: service -->
@@ -55,7 +70,7 @@
       <select id="country" class="pinput"></select>
       <div class="pnav">
         <button class="btn btn-ghost" onclick="go('service')">Back</button>
-        <button class="btn btn-primary" onclick="go('questions')">Continue <span class="arrow">&rarr;</span></button>
+        <button class="btn btn-primary" onclick="validateCountry()">Continue <span class="arrow">&rarr;</span></button>
       </div>
     </section>
 
@@ -87,22 +102,25 @@
       </label>
       <div class="pnav">
         <button class="btn btn-ghost" onclick="go('country')">Back</button>
-        <button class="btn btn-primary" onclick="go('contact')">Continue <span class="arrow">&rarr;</span></button>
+        <button class="btn btn-primary" onclick="validateQuestions()">Continue <span class="arrow">&rarr;</span></button>
       </div>
     </section>
 
     <!-- step 4: contact + consent -->
     <section class="pstep" id="step-contact">
       <div class="tick">Step 4 of 4</div>
-      <h2>Where should we save your progress?</h2>
+      <h2>Create your secure account.</h2>
       <label class="plabel">Your name
         <input id="c-name" class="pinput" maxlength="120" placeholder="Full name">
       </label>
       <label class="plabel">Email
         <input id="c-email" class="pinput" type="email" maxlength="200" placeholder="you@example.com">
       </label>
-      <label class="plabel">Phone (optional)
+      <label class="plabel">Phone
         <input id="c-phone" class="pinput" maxlength="40" placeholder="+1">
+      </label>
+      <label class="plabel">Create a password
+        <input id="c-pass" class="pinput" type="password" minlength="8" placeholder="At least 8 characters" autocomplete="new-password">
       </label>
       <input id="hp" name="website" style="position:absolute;left:-5000px;" tabindex="-1" autocomplete="off">
       <label class="pconsent">
@@ -112,7 +130,7 @@
       <p id="err" class="perr" hidden></p>
       <div class="pnav">
         <button class="btn btn-ghost" onclick="go('questions')">Back</button>
-        <button class="btn btn-primary" id="save-btn" onclick="saveIntake()">Create my checklist <span class="arrow">&rarr;</span></button>
+        <button class="btn btn-primary" id="save-btn" onclick="saveIntake()">Create account and checklist <span class="arrow">&rarr;</span></button>
       </div>
     </section>
 
@@ -135,10 +153,29 @@
         </div>
       </div>
       <div id="reqs"></div>
+      <div class="req" id="req-extra">
+        <div class="req-main">
+          <span class="req-dot"></span>
+          <div>
+            <strong>Anything else that supports your case</strong> <em class="req-opt">optional</em>
+            <p>Any additional documents you think might help your consultant.</p>
+            <p class="req-file" id="extra-files" hidden></p>
+          </div>
+        </div>
+        <label class="btn btn-ghost req-btn">Upload
+          <input type="file" hidden accept=".pdf,.jpg,.jpeg,.png,.heic,.webp,.docx" onchange="uploadFile(this, 'additional')">
+        </label>
+      </div>
       <div class="card" style="margin-top:22px;">
-        <h3>Your private link</h3>
-        <p style="margin-bottom:12px;">Save this link to come back anytime. It is unique to you; treat it like a password.</p>
-        <code id="resume-link" class="plink"></code>
+        <h3>A note for your consultant</h3>
+        <p style="margin-bottom:12px;">Anything you want them to know before your consultation.</p>
+        <textarea id="note" class="pinput" rows="4" maxlength="1500" placeholder="Write here"></textarea>
+        <div style="margin-top:12px;"><button class="btn btn-ghost" onclick="saveNote()">Save note</button>
+        <span id="note-ok" class="muted" style="margin-left:10px; font-size:14px;" hidden>Saved.</span></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <h3 id="acct-title">Your account is ready</h3>
+        <p id="acct-msg" style="margin-bottom:0;">Come back anytime: open this portal and sign in with your email and password to continue where you left off.</p>
       </div>
       <div class="card" style="margin-top:16px; border-color:var(--current);">
         <h3>Ready when you are</h3>
@@ -153,6 +190,8 @@
 
 <script>
 const FN = "https://hpaxoxnwffzxginnbpgy.supabase.co/functions/v1";
+const db = supabase.createClient("https://hpaxoxnwffzxginnbpgy.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwYXhveG53ZmZ6eGdpbm5icGd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NDcwNjcsImV4cCI6MjEwMjUyMzA2N30.Hiosct1yuD_cnBTt8uRBOe7OEznU5N_qsfYZQREEspg");
 const state = { service: null, token: null, reqs: [], docs: [] };
 
 const COUNTRIES = ["India","Philippines","China","Nigeria","Pakistan","Iran","Brazil","Mexico","Colombia","United States","United Kingdom","France","Ukraine","Vietnam","South Korea","Japan","Bangladesh","Sri Lanka","Nepal","Morocco","Algeria","Egypt","Kenya","Ghana","Cameroon","Ethiopia","Jamaica","Haiti","Peru","Chile","Argentina","Venezuela","Turkey","Lebanon","Jordan","Syria","Iraq","Afghanistan","Saudi Arabia","United Arab Emirates","Indonesia","Malaysia","Thailand","Hong Kong","Taiwan","Russia","Germany","Spain","Italy","Portugal","Ireland","Australia","New Zealand","South Africa","Other"];
@@ -171,11 +210,44 @@ document.querySelectorAll(".svc").forEach(b => b.addEventListener("click", () =>
   setTimeout(() => go("country"), 180);
 }));
 
+function validateCountry() {
+  if (!val("country")) { alert("Please choose your country of citizenship."); return; }
+  go("questions");
+}
+function validateQuestions() {
+  if (!val("q-timeline") || !val("q-status")) {
+    alert("Please choose your timeline and where you are right now. These help your consultant prepare properly.");
+    return;
+  }
+  go("contact");
+}
+async function clientSignIn() {
+  const err = document.getElementById("s-err"); err.hidden = true;
+  const { error } = await db.auth.signInWithPassword({
+    email: val("s-email"), password: document.getElementById("s-pass").value,
+  });
+  if (error) { err.textContent = "Sign in failed. Check your email and password."; err.hidden = false; return; }
+  const { data } = await db.from("client_accounts").select("lead_id, leads(portal_token)").limit(1).maybeSingle();
+  const token = data && data.leads ? data.leads.portal_token : null;
+  if (!token) { err.textContent = "Account found but no file yet. Start the questions instead."; err.hidden = false; return; }
+  resume(token);
+}
+async function saveNote() {
+  if (!state.token) return;
+  const ok = document.getElementById("note-ok"); ok.hidden = true;
+  await fetch(FN + "/portal-intake", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ token: state.token, service: state.service || "other", profile: { note: val("note") } }),
+  });
+  ok.hidden = false;
+}
 async function saveIntake() {
   const err = document.getElementById("err");
   err.hidden = true;
-  const email = val("c-email"), name = val("c-name");
-  if (!name || !email) { return showErr("Please add your name and email so we can save your progress."); }
+  const email = val("c-email"), name = val("c-name"), phone = val("c-phone");
+  const pass = document.getElementById("c-pass").value;
+  if (!name || !email || !phone) { return showErr("Please add your name, email and phone number."); }
+  if (pass.length < 8) { return showErr("Please create a password of at least 8 characters."); }
   if (!document.getElementById("c-consent").checked) { return showErr("Please agree to the storage terms to continue."); }
   const btn = document.getElementById("save-btn");
   btn.disabled = true; btn.textContent = "Saving...";
@@ -184,7 +256,7 @@ async function saveIntake() {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({
         token: state.token, service: state.service || "other",
-        full_name: name, email, phone: val("c-phone"), country: val("country"),
+        full_name: name, email, phone, password: pass, country: val("country"),
         consent: true, website: document.getElementById("hp").value,
         profile: { goal: val("q-goal"), timeline: val("q-timeline"), status_now: val("q-status") },
       }),
@@ -192,10 +264,15 @@ async function saveIntake() {
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || "save failed");
     state.token = data.token; state.reqs = data.requirements || [];
-    const url = location.origin + "/portal?t=" + state.token;
-    history.replaceState(null, "", "/portal?t=" + state.token);
-    document.getElementById("resume-link").textContent = url;
+    history.replaceState(null, "", "/portal");
     document.getElementById("hello").textContent = (name.split(" ")[0] || "") + ", here's what to gather.";
+    if (data.account === "exists") {
+      document.getElementById("acct-title").textContent = "You already had an account";
+      document.getElementById("acct-msg").textContent = "Next time, use the I have an account button and sign in with your existing password.";
+    } else if (data.account !== "created") {
+      document.getElementById("acct-title").textContent = "Progress saved";
+      document.getElementById("acct-msg").textContent = "We could not create the account just now, but your progress and uploads are saved. The office can resend access anytime.";
+    }
     renderReqs(); go("checklist");
   } catch (e) {
     showErr("Could not save right now. Please try again in a moment.");
@@ -229,7 +306,7 @@ async function uploadFile(input, code) {
   const file = input.files[0];
   if (!file) return;
   if (file.size > 10 * 1024 * 1024) { alert("That file is over 10 MB. Please compress it or upload a smaller scan."); return; }
-  const row = document.getElementById("req-" + code);
+  const row = document.getElementById(code === "additional" ? "req-extra" : "req-" + code);
   const btn = row.querySelector(".req-btn");
   btn.classList.add("loading"); btn.firstChild.textContent = "Uploading...";
   try {
@@ -245,9 +322,18 @@ async function uploadFile(input, code) {
     });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || "upload failed");
-    state.docs = state.docs.filter(d => d.requirement_code !== code);
-    state.docs.push({ requirement_code: code, file_name: file.name });
-    renderReqs();
+    if (code === "additional") {
+      state.docs.push({ requirement_code: "additional", file_name: file.name });
+      row.classList.add("done");
+      const ef = document.getElementById("extra-files");
+      ef.hidden = false;
+      ef.textContent = "Received: " + state.docs.filter(d => d.requirement_code === "additional").map(d => d.file_name).join(", ");
+      btn.classList.remove("loading"); btn.firstChild.textContent = "Add more";
+    } else {
+      state.docs = state.docs.filter(d => d.requirement_code !== code);
+      state.docs.push({ requirement_code: code, file_name: file.name });
+      renderReqs();
+    }
   } catch (e) {
     alert(e.message || "Upload failed, please try again.");
     btn.classList.remove("loading"); btn.firstChild.textContent = "Upload";
@@ -256,7 +342,8 @@ async function uploadFile(input, code) {
 
 function updateRing() {
   const total = state.reqs.length || 1;
-  const got = new Set(state.docs.map(d => d.requirement_code)).size;
+  const codes = new Set(state.reqs.map(r => r.code));
+  const got = new Set(state.docs.filter(d => codes.has(d.requirement_code)).map(d => d.requirement_code)).size;
   const pct = Math.round((got / total) * 100);
   document.getElementById("ring").style.strokeDashoffset = String(251.3 * (1 - pct / 100));
   document.getElementById("ring-label").textContent = pct + "%";
@@ -272,9 +359,15 @@ async function resume(token) {
     if (!res.ok || !data.ok) return;
     state.token = token; state.reqs = data.requirements || []; state.docs = data.documents || [];
     state.service = data.lead.service;
-    document.getElementById("resume-link").textContent = location.origin + "/portal?t=" + token;
     if (data.lead.full_name) document.getElementById("hello").textContent =
       data.lead.full_name.split(" ")[0] + ", welcome back.";
+    if (data.lead.profile && data.lead.profile.note) document.getElementById("note").value = data.lead.profile.note;
+    const extras = state.docs.filter(d => d.requirement_code === "additional");
+    if (extras.length) {
+      const ef = document.getElementById("extra-files");
+      ef.hidden = false; ef.textContent = "Received: " + extras.map(d => d.file_name).join(", ");
+      document.getElementById("req-extra").classList.add("done");
+    }
     renderReqs(); go("checklist");
   } catch (e) { /* start fresh */ }
 }

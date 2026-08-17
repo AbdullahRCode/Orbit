@@ -2,6 +2,12 @@
 
 Append only, newest first. Format: date | decision | reason | supersedes. When a decision here changes current state, CLAUDE.md must be updated in the same session.
 
+2026-08-17 | v3 adds client accounts with email and password, per Abdullah's overrule of link-only access. Secure links remain as a backup path. | Abdullah wants big-firm parity; accounts also enable future password reset and messaging. | Supersedes the link-only decision below.
+
+2026-08-17 | Document intelligence live: every analyzable upload gets a factual AI summary for the consultant (type, legibility, dates, concerns). Never eligibility. Non-analyzable types marked for human review. | This is the admin-hours killer and a core sales asset. | None.
+
+2026-08-17 | Email notifications live via Resend from abdullah@logorhythmx.com until the Orbit domain exists: new lead, new document with AI review, assistant escalation. | Consultants do not refresh dashboards; phone-native email is the v1 alert channel. SMS later. | None.
+
 2026-08-17 | Client portal v1 uses secure 256-bit private links instead of passwords for end clients; password accounts are phase 2. | Password friction kills completion for immigrant leads. Link entropy matches password security, everything audited. | Refines Abdullah's login-password request, he approved building as judged necessary.
 
 2026-08-17 | Integration stance: no case management build, no API dependency. V1 is export plus webhook handoff at retainer. Portal scope is pre-retainer only. | Docketwise is Zapier only, Officio thin. Avoids fighting giants and fragile dependencies. | Sharpens the sit-above founding rule.
