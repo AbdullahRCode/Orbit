@@ -11,6 +11,7 @@ AI revenue, growth and intelligence layer for Canadian immigration consultants (
 3. Every section carries a verified date. Refresh the date whenever you touch the section.
 4. At session start, flag any section older than 60 days in: Current phase, Pricing, Integrations, Compliance pointers. Ask Abdullah to confirm or re-verify with search before relying on it.
 5. Treat this file as a cache with expiry, not scripture.
+6. Every live deploy via MCP (migration or edge function) must be mirrored into supabase/ in the repo in the same session, before the handoff zip is produced. The repo and the deployed system are never allowed to drift.
 
 ## Hard rules (verified 2026-08-17)
 - The AI never provides immigration advice, eligibility assessments, or representation. General information with official sources, intake, qualification, and booking only. Read COMPLIANCE.md before writing any client-facing copy or prompt.

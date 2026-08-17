@@ -1,7 +1,4 @@
-// orbit-reply: the compliance gated intake assistant. Called after a smart delay.
-// Claims the newest unanswered inbound message atomically, replies within hard walls,
-// escalates anything that approaches immigration advice. Every action is audited.
-// Auth: x-orbit-secret header must match ORBIT_WEBHOOK_SECRET when that secret is set.
+// orbit-reply v2: compliance gated intake assistant. Adds office email notification on escalation.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(
@@ -96,7 +93,8 @@ Deno.serve(async (req: Request) => {
     input: { lead_id: lead.id, communication_id: newest.id },
   }).select("id").single();
 
-  const bookingUrl = (org.settings?.booking_url as string) || "https://cal.com/abdullah-logorhythmx/15min";
+  const settings = (org.settings ?? {}) as Record<string, string>;
+  const bookingUrl = settings.booking_url || "https://cal.com/abdullah-logorhythmx/15min";
   let humanNeeded = lead.human_needed;
   let guardNote: string | null = null;
 
@@ -204,6 +202,22 @@ Deno.serve(async (req: Request) => {
     subject_type: "communication", subject_id: outbound?.id,
     detail: { lead_id: lead.id, guard: guardNote, model: apiKey ? MODEL : "fallback" },
   });
+
+  if (humanNeeded && !lead.human_needed) {
+    const base = Deno.env.get("SUPABASE_URL");
+    const n = fetch(`${base}/functions/v1/notify`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-orbit-secret": secret ?? "" },
+      body: JSON.stringify({
+        to: settings.notify_email,
+        subject: `Conversation needs you${lead.full_name ? ": " + lead.full_name : ""}`,
+        text: `Last message: ${newest.body.slice(0, 300)}\n\nReason: ${guardNote || "assistant escalated"}\n\nOpen the command center to take over.`,
+      }),
+    }).catch(() => {});
+    // deno-lint-ignore no-explicit-any
+    const rt = (globalThis as any).EdgeRuntime;
+    if (rt && typeof rt.waitUntil === "function") rt.waitUntil(n);
+  }
 
   if (run.data?.id) {
     await sb.from("agent_runs").update({
