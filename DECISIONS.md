@@ -2,6 +2,12 @@
 
 Append only, newest first. Format: date | decision | reason | supersedes. When a decision here changes current state, CLAUDE.md must be updated in the same session.
 
+2026-08-17 | Client portal v1 uses secure 256-bit private links instead of passwords for end clients; password accounts are phase 2. | Password friction kills completion for immigrant leads. Link entropy matches password security, everything audited. | Refines Abdullah's login-password request, he approved building as judged necessary.
+
+2026-08-17 | Integration stance: no case management build, no API dependency. V1 is export plus webhook handoff at retainer. Portal scope is pre-retainer only. | Docketwise is Zapier only, Officio thin. Avoids fighting giants and fragile dependencies. | Sharpens the sit-above founding rule.
+
+2026-08-17 | Documents: private client-docs bucket, 10MB per file, 40 files per lead, allowlisted types, org and lead scoped paths, signed URLs for viewing, every access audited. Checklists seeded for 7 services from typical IRCC document lists. | Security and PIPEDA posture with easy client experience. | None.
+
 2026-08-17 | Backend v1 deployed live to hpaxoxnwffzxginnbpgy via MCP: core schema migration plus web-lead, orbit-ingest, orbit-reply, daily-briefing. | Abdullah asked for the backend built end to end. Safe by default without API keys. | None.
 
 2026-08-17 | Real time conversational replies are level 1 (no per-message approval); system-initiated outbound is level 2 via the approvals table. | A live chat assistant cannot wait for approval per message. Walls are enforced in prompt plus code guards, fully audited, escalation flags human_needed. | Refines the approval levels in COMPLIANCE.md.

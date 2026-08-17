@@ -37,8 +37,9 @@ Benchmark: 2+ attributed retained files within 60 days of pilot means commit ful
 1. DONE. Marketing site: static HTML/CSS/JS on Vercel with cleanUrls. Pages: home, how-it-works, compliance, pricing, contact.
 2. DONE. Supabase schema live on hpaxoxnwffzxginnbpgy: 11 tables, RLS on all, audit_logs append-only from clients, orbit-hq tenant seeded. Source: supabase/migrations/.
 3. DONE. Edge functions live (all verify_jwt false with x-orbit-secret header auth): web-lead (public form, honeypot, CORS), orbit-ingest (message buffer), orbit-reply (compliance gated assistant: prompt walls plus code-level output guards, input escalation triggers, atomic claim, 60-word hard cap, safe fallback without API key, full audit), daily-briefing (real counts only, upserts briefings table). Source: supabase/functions/.
-4. NEXT. Dashboard: command center, leads, approvals queue, audit log viewer. Stack decision at that point.
+4. DONE. Client portal (portal.html): guided wizard, per service document checklists, encrypted uploads via secure 256-bit link, progress ring, consent capture. Consultant command center (app.html): Supabase Auth login, stats, needs-you queue, approvals, pipeline, documents with signed URL viewing, audit trail, latest briefing. Backing: migration 2 (documents, document_requirements, allowed_admins, auth trigger, client-docs private bucket 10MB limit) plus portal-intake, portal-upload, portal-status functions, all live.
 5. NEXT. Schedule daily-briefing at 8am America/Vancouver (Supabase dashboard cron calling the function with the secret header).
+6b. NEXT. Retainer handoff export: profile PDF plus documents zip, and a generic webhook for Zapier into any case management tool.
 6. NEXT. Wire ManyChat to orbit-ingest and orbit-reply when the pilot RCIC lands.
 
 Agents are edge functions and scheduled jobs. The 100-agent taxonomy is sales positioning, never literal architecture.
@@ -53,6 +54,9 @@ Agents are edge functions and scheduled jobs. The 100-agent taxonomy is sales po
 
 ## Key numbers cache (verified 2026-08-17, source: market research report 2026-08-17)
 About 12,000 RCICs in Canada, about 2,963 in BC, about 2,200 in Metro Vancouver (estimate). Client fees per file $1,500 to $7,000. ORBIT tiers as published on site: Foundation $1,500, Growth $3,500, Scale custom. Tiers are a hypothesis until validated by sales. Competitive gap: no compliance-aware growth and intelligence layer exists for RCICs.
+
+## Integration stance (verified 2026-08-17)
+Orbit neither builds case management nor depends on case management APIs. Docketwise exposes Zapier only; Officio's API is thin. V1 integration is a clean retainer handoff: export (profile PDF plus documents zip) and a webhook any tool can consume. Deep sync is built only when a paying firm demands it. The client portal covers pre-retainer intake and consultation prep documents only; post-retainer document management belongs to the firm's case management tool.
 
 ## Backend behavior rules (verified 2026-08-17)
 - Real time conversational replies to user-initiated messages are level 1: allowed without per-message approval because walls are enforced in prompt and code, everything is audited, and escalation flags human_needed. System-initiated outbound (follow ups, campaigns) is level 2 and must go through the approvals table. Level 3 never automates.
