@@ -1,6 +1,5 @@
-// doc-intelligence: reads one uploaded document with AI and writes a short factual summary
-// for the consultant: what it appears to be, legibility, visible dates, concerns.
-// Never assesses eligibility. Internal only: requires x-orbit-secret.
+// doc-intelligence v2: reads one uploaded document with AI and writes a short factual summary.
+// No longer emails per document; digest-sweep sends one consolidated email per lead.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -68,18 +67,6 @@ Deno.serve(async (req: Request) => {
     detail: { requirement_code: doc.requirement_code },
   });
 
-  const base = Deno.env.get("SUPABASE_URL");
-  const { data: org } = await sb.from("organizations").select("settings").eq("id", doc.org_id).single();
-  const { data: lead } = await sb.from("leads").select("full_name").eq("id", doc.lead_id).single();
-  await fetch(`${base}/functions/v1/notify`, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-orbit-secret": secret ?? "" },
-    body: JSON.stringify({
-      to: org?.settings?.notify_email,
-      subject: `New document from ${lead?.full_name || "a client"}`,
-      text: `File: ${doc.file_name}\nSlot: ${doc.requirement_code || "unspecified"}\n\nAI review: ${summary}\n\nOpen the command center to view it.`,
-    }),
-  }).catch(() => {});
 
   return json({ ok: true, summary });
 });

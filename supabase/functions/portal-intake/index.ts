@@ -1,5 +1,5 @@
-// portal-intake v2: saves the wizard, creates or updates the lead, optionally creates a client
-// account (email plus password), merges profile updates, notifies the office on new leads.
+// portal-intake v3: saves the wizard, creates or updates the lead, optionally creates a client
+// account, merges profile updates. Notifications now flow through digest-sweep, one email per lead.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
 
   await sb.from("lead_events").insert({
     org_id: org.id, lead_id: lead.id, type: "portal_intake_saved",
-    payload: { service, country, account: accountStatus },
+    payload: { service, country, account: accountStatus, is_new: isNew },
   });
   await sb.from("audit_logs").insert({
     org_id: org.id, actor_type: "system", actor: "portal-intake",
@@ -94,18 +94,6 @@ Deno.serve(async (req: Request) => {
     subject_type: "lead", subject_id: lead.id, detail: { service, account: accountStatus },
   });
 
-  if (isNew) {
-    const base = Deno.env.get("SUPABASE_URL");
-    fetch(`${base}/functions/v1/notify`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-orbit-secret": Deno.env.get("ORBIT_WEBHOOK_SECRET") ?? "" },
-      body: JSON.stringify({
-        to: (org.settings as Record<string, string>)?.notify_email,
-        subject: `New lead: ${fullName || email}`,
-        text: `Service: ${service.replace(/_/g, " ")}\nCountry: ${country || "unknown"}\nGoal: ${s(profilePatch.goal) || "not given"}\nTimeline: ${s(profilePatch.timeline) || "not given"}\n\nOpen the command center for details.`,
-      }),
-    }).catch(() => {});
-  }
 
   const { data: reqs } = await sb.from("document_requirements")
     .select("code, label, description, required, sort").eq("service", service).order("sort");

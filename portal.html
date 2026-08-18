@@ -184,7 +184,25 @@
       </div>
       <p class="muted" style="font-size:13px; margin-top:18px;">Encrypted in transit and at rest. Files are accepted as pdf, jpg, png, heic, webp or docx, 10 MB each. Every access is logged.</p>
     </section>
+  </div>
 
+  <!-- portal guide -->
+  <button class="guide-fab" id="guide-fab" onclick="toggleGuide()" aria-label="Open the portal guide" hidden>
+    <span class="logo-mark"><span class="ring" style="border-color:var(--ice);"></span><span class="moon"></span></span>
+  </button>
+  <div class="guide-panel" id="guide-panel" hidden>
+    <div class="guide-head">
+      <strong>Portal guide</strong>
+      <span class="muted" style="font-size:12px;">Digital assistant, here any hour</span>
+      <button class="guide-close" onclick="toggleGuide()" aria-label="Close">&times;</button>
+    </div>
+    <div class="guide-msgs" id="guide-msgs">
+      <div class="gmsg them">Hi! I can explain any document on your list, what happens after you upload, or how booking works. What can I help with?</div>
+    </div>
+    <div class="guide-input">
+      <input id="guide-text" class="pinput" style="margin-top:0;" maxlength="1500" placeholder="Ask anything about the portal">
+      <button class="btn btn-primary" style="padding:12px 18px;" onclick="guideSend()" id="guide-send">Send</button>
+    </div>
   </div>
 </main>
 
@@ -374,6 +392,43 @@ async function resume(token) {
 
 function val(id) { return document.getElementById(id).value.trim(); }
 function showErr(msg) { const e = document.getElementById("err"); e.textContent = msg; e.hidden = false; }
+
+function toggleGuide() {
+  const panel = document.getElementById("guide-panel");
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) document.getElementById("guide-text").focus();
+}
+function addMsg(text, who) {
+  const box = document.getElementById("guide-msgs");
+  const div = document.createElement("div");
+  div.className = "gmsg " + who;
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+async function guideSend() {
+  const input = document.getElementById("guide-text");
+  const msg = input.value.trim();
+  if (!msg || !state.token) return;
+  input.value = "";
+  addMsg(msg, "me");
+  const btn = document.getElementById("guide-send");
+  btn.disabled = true;
+  try {
+    const res = await fetch(FN + "/portal-chat", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: state.token, message: msg }),
+    });
+    const data = await res.json();
+    addMsg(data.reply || "A member of the team will follow up with you shortly.", "them");
+  } catch (e) {
+    addMsg("Connection hiccup. Please try that again.", "them");
+  } finally { btn.disabled = false; }
+}
+document.getElementById("guide-text").addEventListener("keydown", e => { if (e.key === "Enter") guideSend(); });
+
+const _origGo = go;
+go = function(step) { _origGo(step); document.getElementById("guide-fab").hidden = step !== "checklist"; };
 
 const t = new URLSearchParams(location.search).get("t");
 if (t && /^[0-9a-f]{64}$/.test(t)) resume(t);
