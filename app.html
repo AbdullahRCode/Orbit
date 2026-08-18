@@ -43,33 +43,33 @@
 
       <div class="app-grid">
         <div class="card">
-          <div class="tick">Needs you</div>
+          <div class="tick">Pulse</div>
           <h3 style="margin-top:0;">Conversations waiting on a human</h3>
           <div id="needs-you" class="tbl"></div>
         </div>
         <div class="card">
-          <div class="tick">Approvals</div>
+          <div class="tick">Sentinel</div>
           <h3 style="margin-top:0;">Waiting for sign off</h3>
           <div id="approvals" class="tbl"></div>
         </div>
       </div>
 
       <div class="card" style="margin-top:22px;">
-        <div class="tick">Pipeline</div>
+        <div class="tick">Pulse</div>
         <h3 style="margin-top:0;">Recent leads</h3>
         <div id="leads" class="tbl"></div>
       </div>
 
       <div class="app-grid" style="margin-top:22px;">
         <div class="card">
-          <div class="tick">Documents</div>
+          <div class="tick">Nexus</div>
           <h3 style="margin-top:0;">Latest received</h3>
           <div id="docs" class="tbl"></div>
         </div>
         <div class="card">
-          <div class="tick">On the record</div>
+          <div class="tick">Sentinel</div>
           <h3 style="margin-top:0;">Audit trail</h3>
-          <div id="audit" class="tbl small"></div>
+          <div id="audit" class="tbl small capped"></div>
         </div>
       </div>
 
@@ -85,11 +85,29 @@
   </section>
 </main>
 
+<div class="modal-overlay" id="lead-overlay" hidden onclick="if(event.target===this)closeLead()">
+  <div class="modal">
+    <button class="guide-close" style="position:absolute;right:14px;top:10px;" onclick="closeLead()">&times;</button>
+    <div id="lead-body"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="doc-overlay" hidden onclick="if(event.target===this)closeDoc()">
+  <div class="modal viewer">
+    <button class="guide-close" style="position:absolute;right:14px;top:10px;z-index:2;" onclick="closeDoc()">&times;</button>
+    <iframe id="doc-frame" title="Document viewer"></iframe>
+    <p class="muted" style="font-size:12px;margin-top:8px;">Secure in-app view. Link expires in minutes. This view is on the record.</p>
+  </div>
+</div>
+
+
 <script>
 const SUPA_URL = "https://hpaxoxnwffzxginnbpgy.supabase.co";
 const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhwYXhveG53ZmZ6eGdpbm5icGd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NDcwNjcsImV4cCI6MjEwMjUyMzA2N30.Hiosct1yuD_cnBTt8uRBOe7OEznU5N_qsfYZQREEspg";
 const db = supabase.createClient(SUPA_URL, ANON_KEY);
 
+const AGENT_NAME = { "orbit-reply": "Pulse", "orbit-ingest": "Pulse", "web-lead": "Pulse",
+  "portal-intake": "Nexus", "portal-upload": "Nexus", "portal-status": "Nexus", "doc-intelligence": "Nexus",
+  "portal-chat": "Orbit guide", "digest-sweep": "Orbit", "daily-briefing": "Orbit", "notify": "Orbit" };
 const STAGE_LABEL = { new: "New", qualifying: "Qualifying", qualified: "Qualified", booked: "Booked", consulted: "Consulted", retained: "Retained", lost: "Lost", not_a_lead: "Not a lead" };
 
 async function init() {
@@ -172,10 +190,10 @@ async function decide(id, status) {
 
 async function loadLeads() {
   const { data } = await db.from("leads")
-    .select("full_name, email, source, service_interest, stage, score, country, created_at")
+    .select("id, full_name, email, source, service_interest, stage, score, country, created_at")
     .order("created_at", { ascending: false }).limit(20);
   render("leads", data, l => `
-    <div class="row">
+    <div class="row clickable" onclick="openLead('${l.id}')">
       <div><strong>${esc(l.full_name) || esc(l.email) || "Unknown"}</strong>
         <span class="muted"> ${(l.service_interest || "").replace(/_/g, " ")}${l.country ? " from " + esc(l.country) : ""} via ${l.source}</span></div>
       <span class="pill">${STAGE_LABEL[l.stage] || l.stage}</span>
@@ -194,17 +212,12 @@ async function loadDocs() {
       <button class="btn btn-ghost row-btn" onclick="openDoc('${d.storage_path}')">View</button>
     </div>`, "No documents yet. They appear here the moment a client uploads.");
 }
-async function openDoc(path) {
-  const { data, error } = await db.storage.from("client-docs").createSignedUrl(path, 120);
-  if (error || !data) { alert("Could not open the file."); return; }
-  window.open(data.signedUrl, "_blank");
-}
 
 async function loadAudit() {
   const { data } = await db.from("audit_logs")
     .select("actor, action, created_at").order("created_at", { ascending: false }).limit(14);
   render("audit", data, a => `
-    <div class="row"><div><strong>${esc(a.actor)}</strong> <span class="muted">${esc(a.action).replace(/_/g, " ")}</span></div>
+    <div class="row"><div><strong>${AGENT_NAME[a.actor] || esc(a.actor)}</strong> <span class="muted">${esc(a.action).replace(/_/g, " ")}</span></div>
     <span class="muted">${new Date(a.created_at).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span></div>`,
     "The record starts when activity does.");
 }
@@ -217,6 +230,57 @@ async function loadBriefing() {
     document.getElementById("brief-body").textContent = data.body;
   }
 }
+
+const STAGES = ["new","qualifying","qualified","booked","consulted","retained","lost","not_a_lead"];
+async function openLead(id) {
+  const [{ data: l }, { data: docs }, { data: comms }] = await Promise.all([
+    db.from("leads").select("*").eq("id", id).single(),
+    db.from("documents").select("file_name, storage_path, ai_summary, requirement_code, size_bytes, uploaded_at").eq("lead_id", id).order("uploaded_at", { ascending: false }),
+    db.from("communications").select("direction, body, created_at").eq("lead_id", id).order("created_at").limit(30),
+  ]);
+  if (!l) return;
+  const p = l.intake_profile || {};
+  const info = [
+    ["Service", (l.service_interest || "").replace(/_/g, " ")], ["Country", l.country],
+    ["Email", l.email], ["Phone", l.phone], ["Goal", p.goal], ["Timeline", p.timeline],
+    ["Status now", p.status_now], ["Client note", p.note],
+    ["Submitted", p.submitted_at ? "yes" : "not yet"], ["Source", l.source],
+  ].filter(x => x[1]);
+  document.getElementById("lead-body").innerHTML = `
+    <div class="tick">Pulse, lead file</div>
+    <h3 style="margin:0 0 4px;">${esc(l.full_name) || esc(l.email) || "Unknown"}</h3>
+    <div style="display:flex;gap:12px;align-items:center;margin:10px 0 18px;flex-wrap:wrap;">
+      <label style="font-size:13px;color:var(--sage);">Stage
+        <select class="pinput" style="width:auto;padding:8px 12px;margin:0 0 0 8px;display:inline-block;" onchange="setStage('${l.id}', this.value)">
+          ${STAGES.map(s => `<option value="${s}" ${s === l.stage ? "selected" : ""}>${STAGE_LABEL[s] || s}</option>`).join("")}
+        </select>
+      </label>
+      <label style="font-size:13px;color:var(--sage);display:flex;align-items:center;gap:6px;">
+        <input type="checkbox" ${l.human_needed ? "checked" : ""} onchange="setHuman('${l.id}', this.checked)" style="accent-color:var(--current);width:16px;height:16px;"> needs a human
+      </label>
+    </div>
+    <div class="lead-info">${info.map(x => `<div><span>${x[0]}</span><strong>${esc(String(x[1]))}</strong></div>`).join("")}</div>
+    <h3 style="margin:20px 0 8px;font-size:18px;">Documents (Nexus)</h3>
+    ${(docs && docs.length) ? docs.map(d => `
+      <div class="row"><div><strong>${esc(d.file_name)}</strong>
+        <span class="muted"> ${(d.requirement_code || "extra").replace(/_/g, " ")}, ${(d.size_bytes / 1048576).toFixed(1)} MB, ${new Date(d.uploaded_at).toLocaleDateString("en-CA")}</span>
+        ${d.ai_summary ? `<p class="muted" style="font-size:13px;margin-top:3px;color:var(--deep-current);">${esc(d.ai_summary)}</p>` : ""}</div>
+      <button class="btn btn-ghost row-btn" onclick="openDoc('${d.storage_path}')">View</button></div>`).join("")
+      : '<p class="muted">No documents yet.</p>'}
+    <h3 style="margin:20px 0 8px;font-size:18px;">Conversation</h3>
+    <div class="convo">${(comms && comms.length) ? comms.map(m => `<div class="gmsg ${m.direction === "inbound" ? "them" : "me"}">${esc(m.body)}</div>`).join("") : '<p class="muted">No messages yet.</p>'}</div>`;
+  document.getElementById("lead-overlay").hidden = false;
+}
+function closeLead() { document.getElementById("lead-overlay").hidden = true; loadLeads(); loadStats(); loadNeedsYou(); }
+async function setStage(id, stage) { await db.from("leads").update({ stage }).eq("id", id); }
+async function setHuman(id, v) { await db.from("leads").update({ human_needed: v }).eq("id", id); }
+async function openDoc(path) {
+  const { data, error } = await db.storage.from("client-docs").createSignedUrl(path, 300);
+  if (error || !data) { alert("Could not open the file."); return; }
+  document.getElementById("doc-frame").src = data.signedUrl;
+  document.getElementById("doc-overlay").hidden = false;
+}
+function closeDoc() { document.getElementById("doc-overlay").hidden = true; document.getElementById("doc-frame").src = "about:blank"; }
 
 function render(id, rows, tpl, empty) {
   document.getElementById(id).innerHTML =

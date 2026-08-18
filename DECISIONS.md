@@ -2,6 +2,10 @@
 
 Append only, newest first. Format: date | decision | reason | supersedes. When a decision here changes current state, CLAUDE.md must be updated in the same session.
 
+2026-08-17 | Agent divisions surfaced by name across dashboard and portal for trust: Pulse (leads), Nexus (documents), Sentinel (record and guards), Orbit (briefing and client guide). Backend actor strings unchanged for forensics; mapping happens at display. | Abdullah: name the AI so people trust it and know who to ask for. | None.
+
+2026-08-17 | Orbit guide capped at 20 client messages per day, in-app document viewer replaces new-tab viewing. | Cost and abuse control; containment feel for document viewing, same signed URL security. | None.
+
 2026-08-17 | Submit-for-review added: explicit submission moment moves stage to qualified; stage never moves backward from portal saves. Other path requires free-text need. | Abdullah: every flow needs a closure moment and a structure; "other" was awkward. | None.
 
 2026-08-17 | Test suite adopted: tests/smoke.sh (live end to end, compliance trap assertions) and tests/personas.md (12 persona matrix). Run before every release. | Prove it works, repeatably, including that walls hold. | None.

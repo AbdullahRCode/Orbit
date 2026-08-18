@@ -1,6 +1,5 @@
-// portal-chat: the 24/7 portal guide. Synchronous, compliance gated, emotion aware admin
-// that explains the portal, the documents in general terms, and what happens next.
-// Never advice, never eligibility. Public via portal token.
+// portal-chat v2: the Orbit guide. Adds a daily usage cap per client (20 messages) and keeps
+// the same legal walls. Synchronous, compliance gated, emotion aware, multilingual.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -10,6 +9,7 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const MODEL = "claude-sonnet-4-6";
+const DAILY_CAP = 20;
 
 const FORBIDDEN_OUTPUT = [
   /you (are|'re)\s+(likely\s+|probably\s+)?(eligible|qualified)/i,
@@ -27,7 +27,7 @@ const ESCALATE_INPUT = [
 
 function guidePrompt(orgName: string, service: string, checklist: string): string {
   return [
-    `You are the Orbit portal guide for ${orgName}, a Canadian immigration consulting practice. You are a warm, patient, 24/7 admin assistant inside the client's secure document portal. You are not a salesperson and not a consultant.`,
+    `You are Orbit, the portal guide for ${orgName}, a Canadian immigration consulting practice. You are a warm, patient, 24/7 admin assistant inside the client's secure document portal. You are not a salesperson and not a consultant.`,
     "",
     "Your job: help the person use the portal, explain in general public terms what each requested document is and where people usually obtain it, explain what happens after uploads and after booking, reassure with care, and adapt to the person's language and emotional state. If they write in another language, reply in that language.",
     "",
@@ -39,7 +39,7 @@ function guidePrompt(orgName: string, service: string, checklist: string): strin
     "3. General public information only, pointing to official sources like canada.ca in plain words.",
     "4. Questions about their specific case, chances, refusals, or strategy: say warmly that the consultant will cover exactly that in the consultation.",
     "5. If they seem distressed or mention fraud or a complaint: acknowledge kindly, do not argue, say a person will follow up.",
-    "6. If asked, say plainly you are a digital assistant and a human reviews everything important.",
+    "6. If asked, say plainly you are a digital assistant named Orbit and a human reviews everything important.",
     "",
     "Style: 40 words or fewer. Sentence case. No em dashes. One helpful thing per reply, then a gentle next step.",
   ].join("\n");
@@ -62,6 +62,16 @@ Deno.serve(async (req: Request) => {
   const { data: org } = await sb.from("organizations").select("name, settings").eq("id", lead.org_id).single();
   const settings = (org?.settings ?? {}) as Record<string, string>;
   const bookingUrl = settings.booking_url || "https://cal.com/abdullah-logorhythmx/15min";
+
+  // daily cap: count today's inbound guide messages before accepting this one
+  const dayStart = new Date(); dayStart.setUTCHours(0, 0, 0, 0);
+  const { count: usedToday } = await sb.from("communications")
+    .select("id", { count: "exact", head: true })
+    .eq("lead_id", lead.id).eq("channel", "website").eq("direction", "inbound")
+    .gte("created_at", dayStart.toISOString());
+  if ((usedToday ?? 0) >= DAILY_CAP) {
+    return json({ reply: `You have reached today's limit for the guide. Your consultant will pick things up from here, or you can book a time directly: ${bookingUrl}` });
+  }
 
   await sb.from("communications").insert({
     org_id: lead.org_id, lead_id: lead.id, channel: "website",
