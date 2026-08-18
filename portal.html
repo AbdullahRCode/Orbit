@@ -177,6 +177,12 @@
         <h3 id="acct-title">Your account is ready</h3>
         <p id="acct-msg" style="margin-bottom:0;">Come back anytime: open this portal and sign in with your email and password to continue where you left off.</p>
       </div>
+      <div class="card" style="margin-top:16px;">
+        <h3>Done uploading?</h3>
+        <p style="margin-bottom:16px;">Submit everything to your consultant for review. You can still come back and add more afterward.</p>
+        <button class="btn btn-primary" id="submit-btn" onclick="submitAll()">Submit to your consultant <span class="arrow">&rarr;</span></button>
+        <p id="submit-ok" class="req-file" style="margin-top:12px;" hidden>Submitted. Your consultant has your profile and documents for review.</p>
+      </div>
       <div class="card" style="margin-top:16px; border-color:var(--current);">
         <h3>Ready when you are</h3>
         <p style="margin-bottom:16px;">The more complete your checklist, the more your consultation covers. Book whenever you like; keep uploading before your appointment.</p>
@@ -223,6 +229,9 @@ function go(step) {
 }
 document.querySelectorAll(".svc").forEach(b => b.addEventListener("click", () => {
   state.service = b.dataset.svc;
+  document.getElementById("q-goal").placeholder = b.dataset.svc === "other"
+    ? "Describe what you need help with"
+    : "Example: move to Canada with my family next year";
   document.querySelectorAll(".svc").forEach(x => x.classList.remove("sel"));
   b.classList.add("sel");
   setTimeout(() => go("country"), 180);
@@ -237,6 +246,10 @@ function validateQuestions() {
     alert("Please choose your timeline and where you are right now. These help your consultant prepare properly.");
     return;
   }
+  if (state.service === "other" && !val("q-goal")) {
+    alert("Please describe what you need help with, so your consultant knows how to prepare.");
+    return;
+  }
   go("contact");
 }
 async function clientSignIn() {
@@ -249,6 +262,29 @@ async function clientSignIn() {
   const token = data && data.leads ? data.leads.portal_token : null;
   if (!token) { err.textContent = "Account found but no file yet. Start the questions instead."; err.hidden = false; return; }
   resume(token);
+}
+async function submitAll() {
+  if (!state.token) return;
+  const btn = document.getElementById("submit-btn");
+  btn.disabled = true; btn.textContent = "Submitting...";
+  try {
+    const res = await fetch(FN + "/portal-intake", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: state.token, service: state.service || "other",
+        profile: { submitted_at: new Date().toISOString() } }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error();
+    markSubmitted();
+  } catch (e) {
+    alert("Could not submit just now. Please try again.");
+    btn.disabled = false; btn.innerHTML = 'Submit to your consultant <span class="arrow">&rarr;</span>';
+  }
+}
+function markSubmitted() {
+  const btn = document.getElementById("submit-btn");
+  btn.disabled = false; btn.innerHTML = 'Submit updates <span class="arrow">&rarr;</span>';
+  document.getElementById("submit-ok").hidden = false;
 }
 async function saveNote() {
   if (!state.token) return;
@@ -380,6 +416,7 @@ async function resume(token) {
     if (data.lead.full_name) document.getElementById("hello").textContent =
       data.lead.full_name.split(" ")[0] + ", welcome back.";
     if (data.lead.profile && data.lead.profile.note) document.getElementById("note").value = data.lead.profile.note;
+    if (data.lead.profile && data.lead.profile.submitted_at) markSubmitted();
     const extras = state.docs.filter(d => d.requirement_code === "additional");
     if (extras.length) {
       const ef = document.getElementById("extra-files");

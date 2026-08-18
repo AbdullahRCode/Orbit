@@ -1,5 +1,5 @@
-// portal-intake v3: saves the wizard, creates or updates the lead, optionally creates a client
-// account, merges profile updates. Notifications now flow through digest-sweep, one email per lead.
+// portal-intake v4: adds submit-for-review (stage moves forward only), free-text need for the
+// other service path. Notifications flow through digest-sweep.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -50,9 +50,11 @@ Deno.serve(async (req: Request) => {
     full_name: fullName || undefined, email: email || undefined, phone: phone || undefined,
     service_interest: service, country: country || undefined,
     intake_profile: mergedProfile,
-    stage: "qualifying",
   };
   if (consent) fields.consent = { portal: true, at: new Date().toISOString() };
+  // stage only moves forward: new leads start qualifying, submission moves to qualified
+  if (profilePatch.submitted_at) fields.stage = "qualified";
+  else if (!lead) fields.stage = "qualifying";
 
   if (lead) {
     if (!lead.portal_token) { lead.portal_token = randomToken(); fields.portal_token = lead.portal_token; }
@@ -67,7 +69,6 @@ Deno.serve(async (req: Request) => {
     lead = created;
   }
 
-  // optional account creation
   let accountStatus: string | null = null;
   if (password && email) {
     const { data: created, error: authErr } = await sb.auth.admin.createUser({
@@ -85,15 +86,15 @@ Deno.serve(async (req: Request) => {
   }
 
   await sb.from("lead_events").insert({
-    org_id: org.id, lead_id: lead.id, type: "portal_intake_saved",
+    org_id: org.id, lead_id: lead.id,
+    type: profilePatch.submitted_at ? "portal_submitted" : "portal_intake_saved",
     payload: { service, country, account: accountStatus, is_new: isNew },
   });
   await sb.from("audit_logs").insert({
     org_id: org.id, actor_type: "system", actor: "portal-intake",
-    action: isNew ? "lead_captured" : "intake_updated",
+    action: profilePatch.submitted_at ? "submitted_for_review" : (isNew ? "lead_captured" : "intake_updated"),
     subject_type: "lead", subject_id: lead.id, detail: { service, account: accountStatus },
   });
-
 
   const { data: reqs } = await sb.from("document_requirements")
     .select("code, label, description, required, sort").eq("service", service).order("sort");

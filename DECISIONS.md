@@ -2,6 +2,10 @@
 
 Append only, newest first. Format: date | decision | reason | supersedes. When a decision here changes current state, CLAUDE.md must be updated in the same session.
 
+2026-08-17 | Submit-for-review added: explicit submission moment moves stage to qualified; stage never moves backward from portal saves. Other path requires free-text need. | Abdullah: every flow needs a closure moment and a structure; "other" was awkward. | None.
+
+2026-08-17 | Test suite adopted: tests/smoke.sh (live end to end, compliance trap assertions) and tests/personas.md (12 persona matrix). Run before every release. | Prove it works, repeatably, including that walls hold. | None.
+
 2026-08-17 | Notifications consolidated: one branded HTML digest per lead per activity burst (8 min quiet window, 10 min sweep), instant email only for escalations. | Five emails per lead is spam; Abdullah wants one, visual, skimmable. | Supersedes per-event emails.
 
 2026-08-17 | Real scheduling adopted: pg_cron plus pg_net calling edge functions with the shared secret from private.app_secrets. Daily briefing scheduled 15:00 UTC. | Removes the missing-cron gap permanently. | None.
