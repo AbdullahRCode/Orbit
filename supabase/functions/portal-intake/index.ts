@@ -1,6 +1,7 @@
 // portal-intake v4: adds submit-for-review (stage moves forward only), free-text need for the
 // other service path. Notifications flow through digest-sweep.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { withinRateLimit, clientKey } from "../_shared/rate-limit.ts";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const cors = {
@@ -16,6 +17,9 @@ Deno.serve(async (req: Request) => {
   let b: Record<string, unknown>;
   try { b = await req.json(); } catch { return json({ error: "invalid json" }, 400); }
   if (typeof b.website === "string" && b.website.trim() !== "") return json({ ok: true });
+
+  const ok = await withinRateLimit(sb, "portal-intake", clientKey(req), 8, 600);
+  if (!ok) return json({ error: "too many submissions, please try again shortly" }, 429);
 
   const orgSlug = s(b.org_slug) || "orbit-hq";
   const token = s(b.token);

@@ -9,6 +9,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { PDFDocument, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
 import JSZip from "npm:jszip@3.10.1";
+import { isSafeWebhookUrl } from "../_shared/ssrf-guard.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -84,7 +85,7 @@ Deno.serve(async (req: Request) => {
   const settings = (org?.settings ?? {}) as Record<string, unknown>;
   const webhookUrl = typeof settings.retainer_webhook_url === "string" ? settings.retainer_webhook_url : "";
   let webhookSent = false;
-  if (webhookUrl.startsWith("http")) {
+  if (webhookUrl && isSafeWebhookUrl(webhookUrl)) {
     try {
       await fetch(webhookUrl, {
         method: "POST",
@@ -121,6 +122,19 @@ function safeZipName(name: string, id: string): string {
   return `${safe.slice(0, 80)}_${id.slice(0, 8)}`;
 }
 
+// Collapses any run of characters the standard WinAnsi PDF font cannot
+// encode into a single bracketed marker, instead of throwing or silently
+// mangling the text. Used only as a fallback when direct drawing fails.
+function sanitizeForPdf(text: string): string {
+  let out = ""; let inRun = false;
+  for (const ch of text) {
+    const code = ch.codePointAt(0);
+    if (code !== undefined && code <= 255) { out += ch; inRun = false; }
+    else if (!inRun) { out += "[non-Latin text]"; inRun = true; }
+  }
+  return out;
+}
+
 type LeadRow = {
   full_name: string | null; email: string | null; phone: string | null;
   service_interest: string | null; country: string | null; goal: string | null;
@@ -140,7 +154,16 @@ async function buildProfilePdf(lead: LeadRow, docs: DocRow[], orgName: string): 
     const size = opts.size ?? 11;
     const f = opts.bold ? bold : font;
     const color = opts.muted ? rgb(0.6, 0.71, 0.68) : rgb(0.04, 0.18, 0.17);
-    page.drawText(text, { x: 56, y, size, font: f, color });
+    try {
+      page.drawText(text, { x: 56, y, size, font: f, color });
+    } catch {
+      // Standard PDF fonts can only encode Latin-1. A name in Devanagari,
+      // Gurmukhi, or another non-Latin script would otherwise crash the
+      // whole export. The correct name is never lost, it stays exact in the
+      // database and everywhere else in the app, this only affects how it
+      // renders on this one static PDF page.
+      page.drawText(sanitizeForPdf(text), { x: 56, y, size, font: f, color });
+    }
     y -= opts.gap ?? size + 8;
   };
 

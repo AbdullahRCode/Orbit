@@ -3,6 +3,14 @@
   "use strict";
   var FN = "https://hpaxoxnwffzxginnbpgy.supabase.co/functions/v1/site-chat";
   var history = [];
+  var visitorId = (function () {
+    try {
+      var k = "orbit_visitor_id";
+      var v = localStorage.getItem(k);
+      if (!v) { v = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2)); localStorage.setItem(k, v); }
+      return v;
+    } catch (e) { return null; }
+  })();
 
   var fab = document.createElement("button");
   fab.className = "guide-fab";
@@ -88,7 +96,7 @@
     fetch(FN, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ messages: history.slice(-10) }),
+      body: JSON.stringify({ messages: history.slice(-10), visitor_id: visitorId }),
     })
       .then(function (r) { return r.json(); })
       .then(function (d) {

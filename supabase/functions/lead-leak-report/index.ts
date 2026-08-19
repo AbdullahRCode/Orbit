@@ -123,7 +123,11 @@ async function buildReportPdf(
     const size = opts.size ?? 11;
     const f = opts.bold ? bold : font;
     const color = opts.muted ? rgb(0.6, 0.71, 0.68) : rgb(0.04, 0.18, 0.17);
-    page.drawText(text, { x: 56, y, size, font: f, color });
+    try {
+      page.drawText(text, { x: 56, y, size, font: f, color });
+    } catch {
+      page.drawText(sanitizeForPdf(text), { x: 56, y, size, font: f, color });
+    }
     y -= opts.gap ?? size + 8;
   };
   const statLine = (label: string, value: number) => draw(`${String(value).padStart(5, " ")}   ${label}`, { size: 13, gap: 20 });
@@ -160,4 +164,14 @@ async function buildReportPdf(
 
 function json(d: unknown, status = 200): Response {
   return new Response(JSON.stringify(d), { status, headers: { ...cors, "Content-Type": "application/json" } });
+}
+
+function sanitizeForPdf(text: string): string {
+  let out = ""; let inRun = false;
+  for (const ch of text) {
+    const code = ch.codePointAt(0);
+    if (code !== undefined && code <= 255) { out += ch; inRun = false; }
+    else if (!inRun) { out += "[non-Latin text]"; inRun = true; }
+  }
+  return out;
 }

@@ -49,9 +49,16 @@
     <div class="card reveal">
       <span class="division-tag">Or write first</span>
       <h3>Send a note</h3>
-      <p style="margin-bottom:22px;">Tell us about your practice, your services and what is frustrating you about your pipeline. We reply within one business day.</p>
-      <!-- TODO: switch to hello@ the Orbit domain once email is live -->
-      <a class="btn btn-ghost" href="mailto:abdullah@logorhythmx.com?subject=Orbit%20intelligence%20audit">Email us</a>
+      <p style="margin-bottom:18px;">Tell us about your practice and what is frustrating you about your pipeline. We reply within one business day.</p>
+      <form id="contact-form" onsubmit="return false;">
+        <input type="text" name="website" id="cf-hp" class="pinput" style="position:absolute;left:-9999px;" tabindex="-1" autocomplete="off">
+        <label class="plabel">Name <input id="cf-name" class="pinput" type="text" required></label>
+        <label class="plabel">Email <input id="cf-email" class="pinput" type="email" required></label>
+        <label class="plabel">Practice or role <input id="cf-service" class="pinput" type="text" placeholder="e.g. solo RCIC, 3-person firm"></label>
+        <label class="plabel">What's frustrating about your pipeline right now <textarea id="cf-message" class="pinput" rows="3"></textarea></label>
+        <p id="cf-status" class="muted" style="font-size:13px; margin:8px 0 0;"></p>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="submitContactForm()">Send <span class="arrow">&rarr;</span></button>
+      </form>
     </div>
   </div>
 
@@ -82,6 +89,31 @@
   </div>
 </footer>
 
+<script>
+async function submitContactForm() {
+  var status = document.getElementById("cf-status");
+  var name = document.getElementById("cf-name").value.trim();
+  var email = document.getElementById("cf-email").value.trim();
+  var service = document.getElementById("cf-service").value.trim();
+  var message = document.getElementById("cf-message").value.trim();
+  var hp = document.getElementById("cf-hp").value;
+  if (!name || !email) { status.textContent = "Name and email are required."; return; }
+  status.textContent = "Sending...";
+  try {
+    var res = await fetch("https://hpaxoxnwffzxginnbpgy.supabase.co/functions/v1/web-lead", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ full_name: name, email: email, service_interest: service, message: message, website: hp, org_slug: "orbit-hq" }),
+    });
+    var out = await res.json();
+    if (!res.ok || !out.ok) { status.textContent = out.error || "Something went wrong, please email us directly instead."; return; }
+    document.getElementById("contact-form").hidden = true;
+    status.textContent = "Thanks, that's in. We'll reply within one business day.";
+  } catch (e) {
+    status.textContent = "Something went wrong, please email us directly instead.";
+  }
+}
+</script>
 <script src="/js/main.js" defer></script>
 <script src="/js/site-chat.js" defer></script>
 </body>

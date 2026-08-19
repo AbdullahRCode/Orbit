@@ -2,6 +2,7 @@
 // applicant canon from knowledge_items, answers general questions with official sources, never
 // quotes annually changing figures, expanded escalation triggers, escalation email kept.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { violatesOutputGuard } from "../_shared/compliance-guard.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -53,17 +54,6 @@ function systemPrompt(orgName: string, bookingUrl: string, knowledge: string): s
     "If a message is spam, a vendor pitch, or clearly not a potential client, reply once politely and briefly, nothing more.",
   ].join("\n");
 }
-
-// output guard: if the model ever produces advice like language, we replace the reply and escalate
-const FORBIDDEN_OUTPUT = [
-  /you (are|'re)\s+(likely\s+|probably\s+)?(eligible|qualified)/i,
-  /you\s+qualify/i,
-  /your\s+(best|ideal)\s+(option|pathway|program)\s+is/i,
-  /i\s+recommend\s+(applying|the)\s/i,
-  /guarantee/i,
-  /\b\d{2,3}\s?%\s+(success|approval|chance)/i,
-  /(approved|endorsed|affiliated)\s+(by|with)\s+(the\s+)?(government|ircc)/i,
-];
 
 // input signals that always need a human
 const ESCALATE_INPUT = [
@@ -182,7 +172,7 @@ Deno.serve(async (req: Request) => {
       if (!reply) throw new Error("empty completion");
 
       // output guard
-      if (FORBIDDEN_OUTPUT.some((r) => r.test(reply))) {
+      if (violatesOutputGuard(reply)) {
         guardNote = "output_guard_tripped";
         humanNeeded = true;
         reply = `That is exactly the kind of question the consultant should answer for you personally. I am flagging it for the team now. You can also book a time directly here: ${bookingUrl}`;

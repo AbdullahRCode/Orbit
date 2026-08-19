@@ -2,6 +2,7 @@
 // from knowledge_items at runtime, answers general questions with official sources, never
 // quotes figures that change annually, and escalates everything advice shaped. Daily cap kept.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { violatesOutputGuard } from "../_shared/compliance-guard.ts";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const cors = {
@@ -12,15 +13,6 @@ const cors = {
 const MODEL = "claude-sonnet-4-6";
 const DAILY_CAP = 20;
 
-const FORBIDDEN_OUTPUT = [
-  /you (are|'re)\s+(likely\s+|probably\s+)?(eligible|qualified)/i,
-  /you\s+qualify/i,
-  /your\s+(best|ideal)\s+(option|pathway|program)\s+is/i,
-  /i\s+recommend\s+(applying|the)\s/i,
-  /guarantee/i,
-  /\b\d{2,3}\s?%\s+(success|approval|chance)/i,
-  /(approved|endorsed|affiliated)\s+(by|with)\s+(the\s+)?(government|ircc)/i,
-];
 const ESCALATE_INPUT = [
   /refus(ed|al)/i, /appeal/i, /misrepresent/i, /deport/i, /removal\s+order/i,
   /scam|fraud/i, /complain/i, /urgent|emergency/i,
@@ -149,7 +141,7 @@ Deno.serve(async (req: Request) => {
       if (!res.ok) throw new Error(`anthropic ${res.status}`);
       const data = await res.json();
       reply = (data.content?.[0]?.text ?? "").trim() || "I am here to help with the portal. What would you like to know?";
-      if (FORBIDDEN_OUTPUT.some((r) => r.test(reply))) {
+      if (violatesOutputGuard(reply)) {
         guardNote = "output_guard_tripped"; humanNeeded = true;
         reply = `That is exactly what your consultant will answer for you personally in the consultation. You can book here anytime: ${bookingUrl}`;
       }
