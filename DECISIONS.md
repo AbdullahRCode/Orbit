@@ -2,6 +2,10 @@
 
 Append only, newest first. Format: date | decision | reason | supersedes. When a decision here changes current state, CLAUDE.md must be updated in the same session.
 
+2026-08-17 | Knowledge canon adopted: assistants answer from a database of verified official-source Q&As rather than model memory, with a hard rule against quoting annually changing figures and a 90 day expiry forcing RCIC re-verification. | Research showed applicant questions split cleanly into definitional (safe) and advice shaped (escalate); figures like proof of funds drift yearly. | Escalation regex set expanded in orbit-reply and portal-chat.
+
+2026-08-17 | Root cause fix: global [hidden] display none important. Site concierge (site-chat) added to all public pages, fact-locked to published offering and pricing, separate from the client guide. In-app consultant copilot deferred to v7 part 2. | Display rules silently beat the hidden attribute and froze the UI; website visitors need answers and an audit path 24/7. | None.
+
 2026-08-17 | Agent divisions surfaced by name across dashboard and portal for trust: Pulse (leads), Nexus (documents), Sentinel (record and guards), Orbit (briefing and client guide). Backend actor strings unchanged for forensics; mapping happens at display. | Abdullah: name the AI so people trust it and know who to ask for. | None.
 
 2026-08-17 | Orbit guide capped at 20 client messages per day, in-app document viewer replaces new-tab viewing. | Cost and abuse control; containment feel for document viewing, same signed URL security. | None.

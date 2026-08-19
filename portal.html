@@ -446,7 +446,13 @@ function addMsg(text, who) {
 async function guideSend() {
   const input = document.getElementById("guide-text");
   const msg = input.value.trim();
-  if (!msg || !state.token) return;
+  if (!msg) return;
+  if (!state.token) {
+    input.value = "";
+    addMsg(msg, "me");
+    addMsg("Finish the quick questions first so I know your file, then I can help with anything on your checklist.", "them");
+    return;
+  }
   input.value = "";
   addMsg(msg, "me");
   const btn = document.getElementById("guide-send");

@@ -1,0 +1,12 @@
+-- Applied live 2026-08-17: applicant knowledge canon v1, 31 MAY-answer rows in knowledge_items.
+-- Global (org_id null), category official_source, confidence high, verified 2026-08-17,
+-- expires_at 2026-11-17 to enforce the quarterly RCIC re-verification rule.
+-- Escalate-only questions are handled by escalation triggers in code, never by knowledge rows.
+-- Figures that change annually (fees, proof of funds amounts) are deliberately not stated inline;
+-- every answer points to the live official page instead.
+-- Full row contents live in the database (migration orbit_knowledge_canon_v1). Topics covered:
+-- Express Entry, CRS, ECA, proof of funds, language tests, PNP, study permit vs visa, GIC,
+-- study funds, DLI and PAL, SDS closure, PGWP, open vs closed work permits, LMIA, LMIA fraud,
+-- inland vs outland, who can sponsor, Super Visa, TRV vs eTA, dual intent, representative myth,
+-- citizenship days, presence calculator, PR vs citizenship days, GCMS notes, CICC register,
+-- processing times, application status, biometrics, police certificates, ghost consultant reporting.

@@ -1,4 +1,6 @@
-// orbit-reply v2: compliance gated intake assistant. Adds office email notification on escalation.
+// orbit-reply v3: compliance gated intake assistant, now knowledge powered. Pulls the verified
+// applicant canon from knowledge_items, answers general questions with official sources, never
+// quotes annually changing figures, expanded escalation triggers, escalation email kept.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(
@@ -10,7 +12,18 @@ const MODEL = "claude-sonnet-4-6";
 const MIN_AGE_SECONDS = 15; // let multi part messages finish before replying
 const HARD_WORD_CAP = 60;
 
-function systemPrompt(orgName: string, bookingUrl: string): string {
+async function loadKnowledge(orgId: string): Promise<string> {
+  const { data } = await sb.from("knowledge_items")
+    .select("title, content, source_url")
+    .or(`org_id.is.null,org_id.eq.${orgId}`)
+    .eq("category", "official_source")
+    .order("created_at").limit(80);
+  if (!data || data.length === 0) return "";
+  return "\nVerified general knowledge. When a question matches, answer from here and mention the official source in plain words:\n" +
+    data.map((k) => `Q: ${k.title}. A: ${k.content}${k.source_url ? " Source: " + k.source_url : ""}`).join("\n");
+}
+
+function systemPrompt(orgName: string, bookingUrl: string, knowledge: string): string {
   return [
     `You are the digital assistant for ${orgName}, a Canadian immigration consulting practice. You handle first contact: you welcome people, share general information, gather facts, and book consultations.`,
     "",
@@ -21,6 +34,13 @@ function systemPrompt(orgName: string, bookingUrl: string): string {
     "4. If someone asks which program fits them, whether they qualify, about a refusal, an appeal, misrepresentation, deadlines on their own case, or anything that needs professional judgment: warmly explain the consultant will answer that personally, and offer the booking link.",
     "5. If someone is distressed, angry, mentions a scam, or has a complaint: acknowledge with care, do not argue, say a person from the team will follow up, and stop qualifying.",
     "6. If asked whether you are a bot or AI, say yes plainly: you are the practice's digital assistant, and a human reviews everything important.",
+    "",
+    "Working rules:",
+    "- Never state dollar amounts, fee figures or thresholds that change over time. Point to the official page for the current figure instead.",
+    "- People often say visa for everything, PR for permanent residence, file or case for application, agent for representative, points for CRS. Understand these and gently use the official term.",
+    "- When someone is anxious: first validate the feeling in one short phrase, then give the general fact with its official source, then hand the personal part to the consultant.",
+    "- If someone fears scams or mentions paying someone for a job or outcome: no one can guarantee an immigration outcome, IRCC never demands cash or crypto, and licensed consultants can be verified on the CICC public register at register.college-ic.ca.",
+    knowledge,
     "",
     "Style: replies of 45 words or fewer. One question at a time, never more than three qualifying questions total before offering a booking. Warm, plain, confident. Sentence case. No em dashes. Give a little value first, make the next step an easy yes.",
     "",
@@ -48,6 +68,11 @@ const ESCALATE_INPUT = [
   /refus(ed|al)/i, /appeal/i, /misrepresent/i, /deport/i, /removal\s+order/i,
   /lawsuit|sue|lawyer\s+said/i, /scam|fraud|report\s+you/i, /complain/i,
   /urgent|emergency/i,
+  /am\s+i\s+eligible/i, /do\s+i\s+qualify/i, /my\s+chances/i, /chances\s+of\s+(approval|getting)/i,
+  /which\s+(program|province|pathway|option|stream)\s+(is\s+)?(best|better|right)/i,
+  /should\s+i\s+(apply|choose|pick|wait|reapply)/i,
+  /will\s+(i|my|it)\s+(get|be)\s+(approved|accepted|refused|rejected)/i,
+  /ghost\s+consultant/i,
 ];
 
 Deno.serve(async (req: Request) => {
@@ -104,9 +129,11 @@ Deno.serve(async (req: Request) => {
   }
 
   // transcript, oldest first
-  const { data: history } = await sb.from("communications")
-    .select("direction, body").eq("lead_id", lead.id)
-    .order("created_at", { ascending: true }).limit(14);
+  const [{ data: history }, knowledge] = await Promise.all([
+    sb.from("communications").select("direction, body").eq("lead_id", lead.id)
+      .order("created_at", { ascending: true }).limit(14),
+    loadKnowledge(org.id),
+  ]);
 
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   let reply: string;
@@ -142,7 +169,7 @@ Deno.serve(async (req: Request) => {
         },
         body: JSON.stringify({
           model: MODEL, max_tokens: 250,
-          system: systemPrompt(org.name, bookingUrl),
+          system: systemPrompt(org.name, bookingUrl, knowledge),
           messages: collapsed,
         }),
       });

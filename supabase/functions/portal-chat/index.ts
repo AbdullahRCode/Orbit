@@ -1,5 +1,6 @@
-// portal-chat v2: the Orbit guide. Adds a daily usage cap per client (20 messages) and keeps
-// the same legal walls. Synchronous, compliance gated, emotion aware, multilingual.
+// portal-chat v3: the Orbit guide, now knowledge powered. Pulls the verified applicant canon
+// from knowledge_items at runtime, answers general questions with official sources, never
+// quotes figures that change annually, and escalates everything advice shaped. Daily cap kept.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -23,9 +24,25 @@ const FORBIDDEN_OUTPUT = [
 const ESCALATE_INPUT = [
   /refus(ed|al)/i, /appeal/i, /misrepresent/i, /deport/i, /removal\s+order/i,
   /scam|fraud/i, /complain/i, /urgent|emergency/i,
+  /am\s+i\s+eligible/i, /do\s+i\s+qualify/i, /my\s+chances/i, /chances\s+of\s+(approval|getting)/i,
+  /which\s+(program|province|pathway|option|stream)\s+(is\s+)?(best|better|right)/i,
+  /should\s+i\s+(apply|choose|pick|wait|reapply)/i,
+  /will\s+(i|my|it)\s+(get|be)\s+(approved|accepted|refused|rejected)/i,
+  /ghost\s+consultant/i,
 ];
 
-function guidePrompt(orgName: string, service: string, checklist: string): string {
+async function loadKnowledge(orgId: string): Promise<string> {
+  const { data } = await sb.from("knowledge_items")
+    .select("title, content, source_url")
+    .or(`org_id.is.null,org_id.eq.${orgId}`)
+    .eq("category", "official_source")
+    .order("created_at").limit(80);
+  if (!data || data.length === 0) return "";
+  return "\nVerified general knowledge. When a question matches, answer from here and mention the official source in plain words:\n" +
+    data.map((k) => `Q: ${k.title}. A: ${k.content}${k.source_url ? " Source: " + k.source_url : ""}`).join("\n");
+}
+
+function guidePrompt(orgName: string, service: string, checklist: string, knowledge: string): string {
   return [
     `You are Orbit, the portal guide for ${orgName}, a Canadian immigration consulting practice. You are a warm, patient, 24/7 admin assistant inside the client's secure document portal. You are not a salesperson and not a consultant.`,
     "",
@@ -40,6 +57,13 @@ function guidePrompt(orgName: string, service: string, checklist: string): strin
     "4. Questions about their specific case, chances, refusals, or strategy: say warmly that the consultant will cover exactly that in the consultation.",
     "5. If they seem distressed or mention fraud or a complaint: acknowledge kindly, do not argue, say a person will follow up.",
     "6. If asked, say plainly you are a digital assistant named Orbit and a human reviews everything important.",
+    "",
+    "Working rules:",
+    "- Never state dollar amounts, fee figures or thresholds that change over time. Point to the official page for the current figure instead.",
+    "- People often say visa for everything, PR for permanent residence, file or case for application, agent for representative, points for CRS. Understand these and gently use the official term.",
+    "- When someone is anxious: first validate the feeling in one short phrase, then give the general fact with its official source, then hand the personal part to the consultant.",
+    "- If someone fears scams or mentions paying someone for a job or outcome: no one can guarantee an immigration outcome, IRCC never demands cash or crypto, and licensed consultants can be verified on the CICC public register at register.college-ic.ca.",
+    knowledge,
     "",
     "Style: 40 words or fewer. Sentence case. No em dashes. One helpful thing per reply, then a gentle next step.",
   ].join("\n");
@@ -82,8 +106,10 @@ Deno.serve(async (req: Request) => {
   let guardNote: string | null = null;
   if (ESCALATE_INPUT.some((r) => r.test(message))) { humanNeeded = true; guardNote = "input_escalation"; }
 
-  const { data: reqs } = await sb.from("document_requirements")
-    .select("label").eq("service", lead.service_interest ?? "other").order("sort");
+  const [{ data: reqs }, knowledge] = await Promise.all([
+    sb.from("document_requirements").select("label").eq("service", lead.service_interest ?? "other").order("sort"),
+    loadKnowledge(lead.org_id),
+  ]);
   const checklist = (reqs ?? []).map((r) => r.label).join(", ") || "general documents";
 
   const { data: history } = await sb.from("communications")
@@ -114,7 +140,7 @@ Deno.serve(async (req: Request) => {
         headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
         body: JSON.stringify({
           model: MODEL, max_tokens: 200,
-          system: guidePrompt(org?.name ?? "the practice", (lead.service_interest ?? "other").replace(/_/g, " "), checklist),
+          system: guidePrompt(org?.name ?? "the practice", (lead.service_interest ?? "other").replace(/_/g, " "), checklist, knowledge),
           messages: collapsed,
         }),
       });
