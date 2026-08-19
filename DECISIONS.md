@@ -18,6 +18,8 @@ Append only, newest first. Format: date | decision | reason | supersedes. When a
 
 2026-08-17 | Real scheduling adopted: pg_cron plus pg_net calling edge functions with the shared secret from private.app_secrets. Daily briefing scheduled 15:00 UTC. | Removes the missing-cron gap permanently. | None.
 
+2026-08-19 | Repositioned the first sellable product around the Lead Leak Report: diagnose a firm's existing lead history against observable events, never promise recovered revenue. CSV import only, no CRM API integrations until a paying firm names a specific system. | Competitive research confirmed the RCIC software market is more crowded than assumed (VisaFlo, Brothers Digital and others already do AI intake plus CRM), so a broad "AI platform" pitch is weak. A narrow, numerically legible diagnostic is not contested by any competitor found. | Narrows the pilot pitch from "AI growth platform" to "show me where your leads are leaking" as the wedge, platform capabilities remain but are not the headline.
+
 2026-08-18 | v10 security and language hardening: shared rate limiting on all public entry points, explicit named-language instructions across all three assistant surfaces instead of a generic adapt line, rotating multilingual invite bubble on the marketing site, and a published non-fabricated security and compliance one-pager. | Immigration to Canada draws heavily from non-English speakers, and public endpoints need abuse protection before real traffic arrives. | None.
 
 2026-08-18 | Multi-tenant billing, staff roles and self-serve onboarding stay deferred. | Building for a second and third firm before the first is retained is speculative engineering with no signal behind it, per the phase gate. | Reaffirms the phase gate decision.
