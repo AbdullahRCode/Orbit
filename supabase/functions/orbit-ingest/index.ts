@@ -1,6 +1,7 @@
 // orbit-ingest: buffers inbound messages from any channel (ManyChat, WhatsApp bridge, email relay).
 // Auth: x-orbit-secret header must match ORBIT_WEBHOOK_SECRET when that secret is set.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { withinRateLimit } from "../_shared/rate-limit.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -29,6 +30,11 @@ Deno.serve(async (req: Request) => {
   const text = typeof body.text === "string" ? body.text.trim().slice(0, 4000) : "";
 
   if (!externalId || !text) return json({ error: "external_user_id and text required" }, 400);
+
+  // Defense in depth even though this endpoint is secret-gated: caps how
+  // fast one external sender (or a compromised secret) can generate load.
+  const ok = await withinRateLimit(sb, "orbit-ingest", `${orgSlug}:${externalId}`, 40, 600);
+  if (!ok) return json({ error: "rate limited" }, 429);
 
   const { data: org } = await sb.from("organizations").select("id").eq("slug", orgSlug).single();
   if (!org) return json({ error: "unknown organization" }, 404);

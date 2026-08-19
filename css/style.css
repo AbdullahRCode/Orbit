@@ -366,6 +366,16 @@ textarea.pinput { resize: vertical; font-family: var(--font-body); }
 }
 .guide-fab:hover { transform: translateY(-3px) scale(1.05); }
 .guide-fab .moon { background: var(--glint); }
+.guide-bubble {
+  position: fixed; right: 90px; bottom: 38px; z-index: 79;
+  max-width: 220px; padding: 10px 16px; border-radius: 999px;
+  background: var(--pine); color: var(--ice); font-size: 13px; font-family: var(--font-body);
+  box-shadow: 0 10px 24px -8px rgba(11,46,43,.45); cursor: pointer;
+  opacity: 1; transition: opacity .2s ease;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.guide-bubble:hover { opacity: .9; }
+@media (max-width: 520px) { .guide-bubble { right: 78px; max-width: 160px; font-size: 12px; } }
 .guide-panel {
   position: fixed; right: 22px; bottom: 92px; z-index: 80;
   width: min(360px, calc(100vw - 44px)); height: 440px;

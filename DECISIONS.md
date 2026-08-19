@@ -18,6 +18,10 @@ Append only, newest first. Format: date | decision | reason | supersedes. When a
 
 2026-08-17 | Real scheduling adopted: pg_cron plus pg_net calling edge functions with the shared secret from private.app_secrets. Daily briefing scheduled 15:00 UTC. | Removes the missing-cron gap permanently. | None.
 
+2026-08-18 | v10 security and language hardening: shared rate limiting on all public entry points, explicit named-language instructions across all three assistant surfaces instead of a generic adapt line, rotating multilingual invite bubble on the marketing site, and a published non-fabricated security and compliance one-pager. | Immigration to Canada draws heavily from non-English speakers, and public endpoints need abuse protection before real traffic arrives. | None.
+
+2026-08-18 | Multi-tenant billing, staff roles and self-serve onboarding stay deferred. | Building for a second and third firm before the first is retained is speculative engineering with no signal behind it, per the phase gate. | Reaffirms the phase gate decision.
+
 2026-08-18 | Retainer handoff export shipped: profile PDF plus documents zip in the private exports bucket, 24 hour signed link, optional webhook to a case management tool via organizations.settings.retainer_webhook_url. Called from /app with the consultant's own session, RLS scoped, no service role in the browser. | Closes the gap between a qualified lead and the firm's own tools without building or depending on case management APIs. | Fulfills the export plus webhook handoff decision below.
 
 2026-08-17 | Portal guide chat added: 24/7 admin concierge on the checklist step, same legal walls and guards as orbit-reply, multilingual, escalates to human. Not a sales agent, not a consultant. | Abdullah wants a Hali-class guide for clients inside the portal. | None.

@@ -25,6 +25,45 @@
   var input = panel.querySelector("input");
   var send = panel.querySelector(".guide-input .btn");
 
+  // Rotating multilingual invite bubble. Cycles every 5s while the panel is
+  // closed, stops for good once the person opens the chat or dismisses it.
+  var GREETINGS = [
+    "Ask me a question",
+    "\u092e\u0941\u091d\u0938\u0947 \u092a\u0942\u091b\u0947\u0902", // Hindi
+    "\u0a2e\u0a48\u0a28\u0942\u0902 \u0a2a\u0942\u0a1b\u0a4b", // Punjabi
+    "\u6709\u4ec0\u4e48\u95ee\u9898\u5c31\u95ee\u6211", // Mandarin
+    "Magtanong sa akin", // Tagalog
+    "Preg\u00fantame algo", // Spanish
+    "H\u1ecfi t\u00f4i b\u1ea5t c\u1ee9 \u0111i\u1ec1u g\u00ec", // Vietnamese
+    "\uc9c8\ubb38\ud574 \ubcf4\uc138\uc694", // Korean
+    "\u0627\u0633\u0623\u0644\u0646\u064a \u0633\u0624\u0627\u0644\u0627\u064b", // Arabic
+    "Posez-moi une question", // French
+  ];
+  var bubble = document.createElement("div");
+  bubble.className = "guide-bubble";
+  bubble.setAttribute("role", "button");
+  bubble.setAttribute("aria-label", "Open chat with Orbit");
+  bubble.textContent = GREETINGS[0];
+  document.body.appendChild(bubble);
+  bubble.addEventListener("click", function () { toggle(); stopBubble(); });
+
+  var bubbleIdx = 0, bubbleTimer = null;
+  function stopBubble() {
+    if (bubbleTimer) { clearInterval(bubbleTimer); bubbleTimer = null; }
+    bubble.style.display = "none";
+  }
+  function startBubble() {
+    bubbleTimer = setInterval(function () {
+      bubbleIdx = (bubbleIdx + 1) % GREETINGS.length;
+      bubble.style.opacity = "0";
+      setTimeout(function () {
+        bubble.textContent = GREETINGS[bubbleIdx];
+        bubble.style.opacity = "1";
+      }, 200);
+    }, 5000);
+  }
+  startBubble();
+
   function add(text, who) {
     var d = document.createElement("div");
     d.className = "gmsg " + who;
@@ -34,9 +73,9 @@
   }
   function toggle() {
     panel.hidden = !panel.hidden;
-    if (!panel.hidden) input.focus();
+    if (!panel.hidden) { input.focus(); stopBubble(); }
   }
-  fab.addEventListener("click", toggle);
+  fab.addEventListener("click", function () { toggle(); stopBubble(); });
   panel.querySelector(".guide-close").addEventListener("click", toggle);
 
   function go() {

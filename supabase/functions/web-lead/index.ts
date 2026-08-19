@@ -1,5 +1,6 @@
 // web-lead: public website form and chat entry point. Honeypot protected, CORS enabled.
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { withinRateLimit, clientKey } from "../_shared/rate-limit.ts";
 
 const sb = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -23,6 +24,9 @@ Deno.serve(async (req: Request) => {
   if (typeof body.website === "string" && body.website.trim() !== "") {
     return json({ ok: true });
   }
+
+  const ok = await withinRateLimit(sb, "web-lead", clientKey(req), 10, 600);
+  if (!ok) return json({ error: "too many submissions, please try again shortly" }, 429);
 
   const orgSlug = str(body.org_slug) || "orbit-hq";
   const fullName = str(body.full_name);

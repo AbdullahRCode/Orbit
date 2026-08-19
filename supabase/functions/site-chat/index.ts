@@ -1,6 +1,10 @@
 // site-chat: Orbit on the marketing site. Sales-side concierge for consultants and visitors.
 // Knows the offering, pricing, compliance stance. Never guarantees, never invents numbers,
 // never gives immigration advice. Stateless: the page sends recent history.
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { withinRateLimit, clientKey } from "../_shared/rate-limit.ts";
+
+const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "content-type",
@@ -24,6 +28,8 @@ const SYSTEM = [
   "Hard walls: never guarantee results or success rates, never state numbers not listed above, never give immigration advice or eligibility opinions, never disparage competitors by name, never claim certifications Orbit does not have. If asked something outside this scope, say so plainly and offer the audit call or email.",
   "",
   "Style: 50 words or fewer, sentence case, no em dashes, warm and direct, one clear next step. If asked whether you are AI, say yes plainly.",
+  "",
+  "Language: reply fluently in whatever language the visitor writes in. Immigration to Canada draws heavily from Hindi, Punjabi, Mandarin, Cantonese, Tagalog, Spanish, Vietnamese, Korean, Arabic, French and Portuguese speakers, so treat fluency in these as a baseline, not an edge case. Match their language exactly, do not switch to English unless they do. All the same hard walls above apply in every language, translation is never an excuse to soften them.",
 ].join("\n");
 
 Deno.serve(async (req: Request) => {
@@ -40,6 +46,9 @@ Deno.serve(async (req: Request) => {
   if (messages.length === 0 || messages[messages.length - 1].role !== "user") {
     return json({ error: "last message must be from the user" }, 400);
   }
+
+  const ok = await withinRateLimit(sb, "site-chat", clientKey(req), 30, 600);
+  if (!ok) return json({ reply: "You have sent a lot of messages quickly. Please wait a few minutes, or book the audit call directly: https://cal.com/abdullah-logorhythmx/15min" }, 429);
 
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) {
