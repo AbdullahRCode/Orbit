@@ -258,7 +258,9 @@ async function openLead(id) {
       <label style="font-size:13px;color:var(--sage);display:flex;align-items:center;gap:6px;">
         <input type="checkbox" ${l.human_needed ? "checked" : ""} onchange="setHuman('${l.id}', this.checked)" style="accent-color:var(--current);width:16px;height:16px;"> needs a human
       </label>
+      <button class="btn btn-ghost" id="export-btn" onclick="exportRetainer('${l.id}')">Export retainer package</button>
     </div>
+    <p class="muted" id="export-status" style="margin:-10px 0 16px;font-size:13px;"></p>
     <div class="lead-info">${info.map(x => `<div><span>${x[0]}</span><strong>${esc(String(x[1]))}</strong></div>`).join("")}</div>
     <h3 style="margin:20px 0 8px;font-size:18px;">Documents (Nexus)</h3>
     ${(docs && docs.length) ? docs.map(d => `
@@ -272,6 +274,30 @@ async function openLead(id) {
   document.getElementById("lead-overlay").hidden = false;
 }
 function closeLead() { document.getElementById("lead-overlay").hidden = true; loadLeads(); loadStats(); loadNeedsYou(); }
+async function exportRetainer(id) {
+  const btn = document.getElementById("export-btn");
+  const status = document.getElementById("export-status");
+  btn.disabled = true;
+  status.textContent = "Building package, this takes a few seconds...";
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const res = await fetch(`${SUPA_URL}/functions/v1/retainer-export`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session.access_token}` },
+      body: JSON.stringify({ lead_id: id }),
+    });
+    const out = await res.json();
+    if (!res.ok || !out.ok) { status.textContent = out.error || "Export failed, try again."; return; }
+    status.innerHTML = `Package ready, ${out.document_count} document${out.document_count === 1 ? "" : "s"} included` +
+      (out.document_errors ? `, ${out.document_errors} could not be read` : "") +
+      (out.webhook_sent ? ", sent to your connected tool" : "") +
+      `. <a href="${out.download_url}" target="_blank" rel="noopener">Download (24h link)</a>`;
+  } catch {
+    status.textContent = "Export failed, try again.";
+  } finally {
+    btn.disabled = false;
+  }
+}
 async function setStage(id, stage) { await db.from("leads").update({ stage }).eq("id", id); }
 async function setHuman(id, v) { await db.from("leads").update({ human_needed: v }).eq("id", id); }
 async function openDoc(path) {

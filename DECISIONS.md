@@ -18,6 +18,8 @@ Append only, newest first. Format: date | decision | reason | supersedes. When a
 
 2026-08-17 | Real scheduling adopted: pg_cron plus pg_net calling edge functions with the shared secret from private.app_secrets. Daily briefing scheduled 15:00 UTC. | Removes the missing-cron gap permanently. | None.
 
+2026-08-18 | Retainer handoff export shipped: profile PDF plus documents zip in the private exports bucket, 24 hour signed link, optional webhook to a case management tool via organizations.settings.retainer_webhook_url. Called from /app with the consultant's own session, RLS scoped, no service role in the browser. | Closes the gap between a qualified lead and the firm's own tools without building or depending on case management APIs. | Fulfills the export plus webhook handoff decision below.
+
 2026-08-17 | Portal guide chat added: 24/7 admin concierge on the checklist step, same legal walls and guards as orbit-reply, multilingual, escalates to human. Not a sales agent, not a consultant. | Abdullah wants a Hali-class guide for clients inside the portal. | None.
 
 2026-08-17 | v3 adds client accounts with email and password, per Abdullah's overrule of link-only access. Secure links remain as a backup path. | Abdullah wants big-firm parity; accounts also enable future password reset and messaging. | Supersedes the link-only decision below.
